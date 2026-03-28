@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import MoteCore
+import Testing
 
 struct CommandStoreTests {
     @Test
@@ -44,7 +44,7 @@ struct CommandStoreTests {
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 
-        for index in 1...6 {
+        for index in 1 ... 6 {
             try """
             ---
             name: Command \(index)

@@ -11,24 +11,24 @@ public enum OpenAICompatibleClientError: LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case let .invalidEndpoint(value):
-            return "Invalid endpoint URL: \(value)"
-        case let .transport(error):
-            return error.localizedDescription
-        case .invalidResponse:
-            return "Invalid response from endpoint"
-        case let .serverStatus(statusCode, body):
-            if body.isEmpty {
-                return "Endpoint returned HTTP \(statusCode)"
-            }
+            case let .invalidEndpoint(value):
+                return "Invalid endpoint URL: \(value)"
+            case let .transport(error):
+                return error.localizedDescription
+            case .invalidResponse:
+                return "Invalid response from endpoint"
+            case let .serverStatus(statusCode, body):
+                if body.isEmpty {
+                    return "Endpoint returned HTTP \(statusCode)"
+                }
 
-            return "Endpoint returned HTTP \(statusCode): \(body)"
-        case .emptyResponse:
-            return "Endpoint returned an empty response"
-        case let .apiError(message):
-            return message
-        case let .malformedResponse(message):
-            return message
+                return "Endpoint returned HTTP \(statusCode): \(body)"
+            case .emptyResponse:
+                return "Endpoint returned an empty response"
+            case let .apiError(message):
+                return message
+            case let .malformedResponse(message):
+                return message
         }
     }
 }
@@ -118,7 +118,10 @@ public final class OpenAICompatibleClient {
                 return EndpointReachability(reachable: false, statusCode: httpResponse.statusCode)
             }
 
-            return EndpointReachability(reachable: (200..<500).contains(httpResponse.statusCode), statusCode: httpResponse.statusCode)
+            return EndpointReachability(
+                reachable: (200 ..< 500).contains(httpResponse.statusCode),
+                statusCode: httpResponse.statusCode
+            )
         } catch {
             return EndpointReachability(reachable: false, statusCode: nil)
         }
@@ -147,7 +150,7 @@ public final class OpenAICompatibleClient {
     public func rewrite(request: RewriteRequest, config: AppConfig) async throws -> RewriteResult {
         let messages = PromptBuilder.buildMessages(for: request)
         let urlRequest = try makeRequest(config: config, messages: messages)
-        return RewriteResult(output: try await execute(request: urlRequest))
+        return try await RewriteResult(output: execute(request: urlRequest))
     }
 
     private func execute(request: URLRequest) async throws -> String {
@@ -157,7 +160,7 @@ public final class OpenAICompatibleClient {
                 throw OpenAICompatibleClientError.invalidResponse
             }
 
-            guard (200..<300).contains(httpResponse.statusCode) else {
+            guard (200 ..< 300).contains(httpResponse.statusCode) else {
                 let body = String(data: data, encoding: .utf8)?
                     .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 throw OpenAICompatibleClientError.serverStatus(httpResponse.statusCode, body)
@@ -210,9 +213,8 @@ public final class OpenAICompatibleClient {
             return message
         }
 
-        if
-            let dictionary = error as? [String: Any],
-            let message = dictionary["message"] as? String
+        if let dictionary = error as? [String: Any],
+           let message = dictionary["message"] as? String
         {
             return message
         }

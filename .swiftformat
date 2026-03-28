@@ -1,0 +1,9 @@
+--swiftversion 6.0
+--indent 4
+--indentcase true
+--trimwhitespace always
+--voidtype void
+--wraparguments before-first
+--wrapcollections before-first
+--maxwidth 120
+--disable redundantSelf

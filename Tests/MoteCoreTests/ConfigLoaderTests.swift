@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import MoteCore
+import Testing
 
 struct ConfigLoaderTests {
     @Test

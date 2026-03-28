@@ -19,8 +19,8 @@ public final class ReplacementCoordinator {
     }
 
     @MainActor
-    public func apply(_ output: String, to snapshot: AXSelectionSnapshot) throws -> ReplacementMethod {
-        try activateTargetApplication(processIdentifier: snapshot.context.processIdentifier)
+    public func apply(_ output: String, to snapshot: AXSelectionSnapshot) async throws -> ReplacementMethod {
+        try await Self.activateTargetApplication(processIdentifier: snapshot.context.processIdentifier)
 
         do {
             try directStrategy.apply(output, to: snapshot)
@@ -31,17 +31,14 @@ public final class ReplacementCoordinator {
         }
     }
 
-    @MainActor
-    private func activateTargetApplication(processIdentifier: Int32) throws {
-        guard processIdentifier != 0 else {
+    private static func activateTargetApplication(processIdentifier: Int32) async throws {
+        guard processIdentifier != 0,
+              let application = NSRunningApplication(processIdentifier: processIdentifier)
+        else {
             return
         }
 
-        guard let application = NSRunningApplication(processIdentifier: processIdentifier) else {
-            return
-        }
-
-        _ = application.activate()
-        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.05))
+        application.activate()
+        try await Task.sleep(for: .milliseconds(80))
     }
 }

@@ -8,12 +8,12 @@ enum CLIError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case let .invalidCommand(command):
-            return "Unknown command: \(command)"
-        case .missingConfig:
-            return "Config is missing. Run `motectl init` first."
-        case let .incompleteConfig(fields):
-            return "Config is incomplete. Set \(fields.joined(separator: ", ")) in config.json."
+            case let .invalidCommand(command):
+                "Unknown command: \(command)"
+            case .missingConfig:
+                "Config is missing. Run `motectl init` first."
+            case let .incompleteConfig(fields):
+                "Config is incomplete. Set \(fields.joined(separator: ", ")) in config.json."
         }
     }
 }
@@ -35,22 +35,22 @@ struct MoteCLI {
         let command = args.first ?? "help"
 
         switch command {
-        case "help", "-h", "--help":
-            print("motectl init")
-            print("motectl doctor")
-            print("motectl config")
-            print("motectl probe")
-        case "init":
-            try ConfigLoader.saveDefaultFilesIfNeeded()
-            print(ConfigLoader.configDirectory().path)
-        case "doctor":
-            try await runDoctor()
-        case "config":
-            print(ConfigLoader.configURL().path)
-        case "probe":
-            try await runProbe()
-        default:
-            throw CLIError.invalidCommand(command)
+            case "help", "-h", "--help":
+                print("motectl init")
+                print("motectl doctor")
+                print("motectl config")
+                print("motectl probe")
+            case "init":
+                try ConfigLoader.saveDefaultFilesIfNeeded()
+                print(ConfigLoader.configDirectory().path)
+            case "doctor":
+                try await runDoctor()
+            case "config":
+                print(ConfigLoader.configURL().path)
+            case "probe":
+                try await runProbe()
+            default:
+                throw CLIError.invalidCommand(command)
         }
     }
 
@@ -68,14 +68,15 @@ struct MoteCLI {
         }
 
         let config = try ConfigLoader.loadConfig()
+        let missing = config.missingRequiredFields
 
-        if config.baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if missing.contains("base_url") {
             print("endpoint: missing")
-            print("model: \(config.model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "missing" : "configured")")
+            print("model: \(missing.contains("model") ? "missing" : "configured")")
             return
         }
 
-        print("model: \(config.model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "missing" : "configured")")
+        print("model: \(missing.contains("model") ? "missing" : "configured")")
         let client = OpenAICompatibleClient()
         let reachability = await client.checkReachability(config: config)
 

@@ -52,7 +52,10 @@ public struct AppConfig: Codable, Equatable, Sendable {
             self.model = try container.decodeIfPresent(String.self, forKey: .model) ?? ""
             self.temperature = try container.decodeIfPresent(Double.self, forKey: .temperature) ?? 0.2
             self.maxTokens = try container.decodeIfPresent(Int.self, forKey: .maxTokens) ?? 1024
-            self.hotkey = try container.decodeIfPresent(Hotkey.self, forKey: .hotkey) ?? .init(key: "space", modifiers: ["option"])
+            self.hotkey = try container.decodeIfPresent(Hotkey.self, forKey: .hotkey) ?? .init(
+                key: "space",
+                modifiers: ["option"]
+            )
             return
         }
 
