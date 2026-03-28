@@ -1,5 +1,5 @@
-import Testing
 @testable import MoteCore
+import Testing
 
 struct PromptBuilderTests {
     @Test

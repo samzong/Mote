@@ -2,8 +2,7 @@ import ApplicationServices
 import Foundation
 
 public final class AXBoundsResolver {
-    public init() {
-    }
+    public init() {}
 
     public func resolveSelectionBounds(for element: AXUIElement, range: SelectionRange) -> CGRect? {
         var cfRange = CFRange(location: range.location, length: range.length)
@@ -47,6 +46,7 @@ public final class AXBoundsResolver {
         let rect = CGRect(origin: position, size: size)
         return rect.isEmpty ? nil : rect
     }
+
     private func pointAttribute(_ attribute: CFString, element: AXUIElement) -> CGPoint? {
         var value: CFTypeRef?
         let result = AXUIElementCopyAttributeValue(element, attribute, &value)

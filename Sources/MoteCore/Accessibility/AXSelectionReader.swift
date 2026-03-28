@@ -1,5 +1,5 @@
-import ApplicationServices
 import AppKit
+import ApplicationServices
 import Foundation
 
 public final class AXSelectionReader {
@@ -11,21 +11,29 @@ public final class AXSelectionReader {
 
     public func readFocusedSelection() -> AXSelectionSnapshot? {
         guard AccessibilityPermission.isTrusted() else {
+            Logger.debug("ax-read: NOT TRUSTED")
             return nil
         }
 
         let systemWide = AXUIElementCreateSystemWide()
         guard let focusedElement = focusedElement(from: systemWide) else {
+            Logger.debug("ax-read: no focused element")
             return nil
         }
 
+        Logger.debug("ax-read: focused element found")
         let candidates = candidateElements(startingAt: focusedElement)
-        for element in candidates {
+        Logger.debug("ax-read: \(candidates.count) candidate elements")
+
+        for (i, element) in candidates.enumerated() {
             if let snapshot = snapshot(for: element, fallbackElement: focusedElement) {
+                let b = String(describing: snapshot.context.bounds)
+                Logger.debug("ax-read: candidate[\(i)] text.count=\(snapshot.context.text.count) bounds=\(b)")
                 return snapshot
             }
         }
 
+        Logger.debug("ax-read: no snapshot from any candidate")
         return nil
     }
 
@@ -50,18 +58,29 @@ public final class AXSelectionReader {
 
     private func snapshot(for element: AXUIElement, fallbackElement: AXUIElement) -> AXSelectionSnapshot? {
         guard let range = selectedRange(for: element), range.length > 0 else {
+            Logger.debug("ax-snap: no range or zero-length")
             return nil
         }
 
         guard let text = selectedText(for: element, range: range), !text.isEmpty else {
+            Logger.debug("ax-snap: no text for range loc=\(range.location) len=\(range.length)")
             return nil
         }
 
         let processIdentifier = processIdentifier(for: element) ?? processIdentifier(for: fallbackElement)
-        let bundleIdentifier = processIdentifier.flatMap { NSRunningApplication(processIdentifier: $0)?.bundleIdentifier }
+        let bundleIdentifier = processIdentifier
+            .flatMap { NSRunningApplication(processIdentifier: $0)?.bundleIdentifier }
         let bounds = boundsResolver.resolveSelectionBounds(for: element, range: range)
             ?? boundsResolver.resolveElementBounds(for: element)
             ?? boundsResolver.resolveElementBounds(for: fallbackElement)
+
+        let sec = isSecure(element: element)
+        let wrt = isWritable(element: element)
+        Logger.debug(
+            "ax-snap: text=\(text.count) pid=\(processIdentifier ?? 0) " +
+                "bundle=\(bundleIdentifier ?? "nil") sec=\(sec) wrt=\(wrt)"
+        )
+
         let context = SelectionContext(
             bundleIdentifier: bundleIdentifier,
             processIdentifier: processIdentifier ?? 0,
@@ -73,6 +92,7 @@ public final class AXSelectionReader {
         )
 
         guard context.isValid else {
+            Logger.debug("ax-snap: context.isValid=false")
             return nil
         }
 

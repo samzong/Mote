@@ -9,16 +9,16 @@ public enum CommandStoreError: LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case let .invalidFileName(path):
-            return "Invalid command file name: \(path)"
-        case let .invalidFrontmatter(path):
-            return "Invalid frontmatter in \(path)"
-        case let .missingField(field, url):
-            return "Missing `\(field)` in \(url.lastPathComponent)"
-        case let .invalidOrder(value, url):
-            return "Invalid `order` value `\(value)` in \(url.lastPathComponent)"
-        case let .emptyPrompt(url):
-            return "Command body is empty in \(url.lastPathComponent)"
+            case let .invalidFileName(path):
+                "Invalid command file name: \(path)"
+            case let .invalidFrontmatter(path):
+                "Invalid frontmatter in \(path)"
+            case let .missingField(field, url):
+                "Missing `\(field)` in \(url.lastPathComponent)"
+            case let .invalidOrder(value, url):
+                "Invalid `order` value `\(value)` in \(url.lastPathComponent)"
+            case let .emptyPrompt(url):
+                "Command body is empty in \(url.lastPathComponent)"
         }
     }
 }
@@ -60,7 +60,7 @@ public enum CommandStore {
         limit: Int = defaultVisibleLimit,
         from directoryURL: URL = ConfigLoader.commandsDirectory()
     ) throws -> [RewritePreset] {
-        Array(try load(from: directoryURL).prefix(limit))
+        try Array(load(from: directoryURL).prefix(limit))
     }
 
     public static func saveTemplateIfNeeded(to directoryURL: URL = ConfigLoader.commandsDirectory()) throws {
@@ -130,11 +130,11 @@ public enum CommandStore {
         }
 
         let bodyStart = content.index(content.startIndex, offsetBy: marker.count + 1)
-        guard let closingRange = content.range(of: "\n\(marker)\n", range: bodyStart..<content.endIndex) else {
+        guard let closingRange = content.range(of: "\n\(marker)\n", range: bodyStart ..< content.endIndex) else {
             throw CommandStoreError.invalidFrontmatter(fileURL.path)
         }
 
-        let frontmatter = content[bodyStart..<closingRange.lowerBound]
+        let frontmatter = content[bodyStart ..< closingRange.lowerBound]
         var values: [String: String] = [:]
 
         for line in frontmatter.split(separator: "\n", omittingEmptySubsequences: true) {

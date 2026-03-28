@@ -7,17 +7,16 @@ public enum AXReplacementWriterError: LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .unsupportedSelection:
-            return "Selection cannot be replaced directly"
-        case .failedWrite:
-            return "Direct replacement failed"
+            case .unsupportedSelection:
+                "Selection cannot be replaced directly"
+            case .failedWrite:
+                "Direct replacement failed"
         }
     }
 }
 
 public final class AXReplacementWriter {
-    public init() {
-    }
+    public init() {}
 
     public func replaceSelectedText(
         in element: AXUIElement,
@@ -61,7 +60,8 @@ public final class AXReplacementWriter {
         }
 
         let updated = currentNSString.replacingCharacters(in: range, with: replacement)
-        guard AXUIElementSetAttributeValue(element, kAXValueAttribute as CFString, updated as CFTypeRef) == .success else {
+        guard AXUIElementSetAttributeValue(element, kAXValueAttribute as CFString, updated as CFTypeRef) == .success
+        else {
             return false
         }
 
