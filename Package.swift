@@ -8,7 +8,6 @@ let package = Package(
     ],
     products: [
         .executable(name: "Mote", targets: ["Mote"]),
-        .executable(name: "motectl", targets: ["motectl"]),
     ],
     targets: [
         .target(
@@ -23,14 +22,6 @@ let package = Package(
             name: "Mote",
             dependencies: ["MoteCore"],
             path: "Sources/Mote",
-            swiftSettings: [
-                .enableUpcomingFeature("StrictConcurrency"),
-            ]
-        ),
-        .executableTarget(
-            name: "motectl",
-            dependencies: ["MoteCore"],
-            path: "Sources/motectl",
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency"),
             ]

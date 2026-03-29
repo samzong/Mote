@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotkeyMonitor: GlobalHotkeyMonitor?
     private var composerPanel: ComposerPanel?
     private var selectionWatcher: SelectionWatcher?
+    private let clipboardReader = ClipboardSelectionReader()
 
     func applicationDidFinishLaunching(_: Notification) {
         Logger.debug("AppDelegate.applicationDidFinishLaunching")
@@ -61,14 +62,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let reader = AXSelectionReader()
-        guard let snapshot = reader.readFocusedSelection() else {
-            Logger.debug("handleHotkey() no selection from reader")
+        if let snapshot = reader.readFocusedSelection() {
+            let b = String(describing: snapshot.context.bounds)
+            Logger.debug("handleHotkey() AX text.count=\(snapshot.context.text.count) bounds=\(b)")
+            showPanel(for: snapshot)
             return
         }
 
-        let b = String(describing: snapshot.context.bounds)
-        Logger.debug("handleHotkey() text.count=\(snapshot.context.text.count) bounds=\(b)")
-        showPanel(for: snapshot)
+        Logger.debug("handleHotkey() AX failed, trying clipboard fallback")
+        Task {
+            guard let snapshot = await clipboardReader.readSelectedText() else {
+                Logger.debug("handleHotkey() clipboard fallback failed")
+                return
+            }
+            Logger.debug("handleHotkey() clipboard got text.count=\(snapshot.context.text.count)")
+            self.showPanel(for: snapshot)
+        }
     }
 
     private func showPanel(for snapshot: AXSelectionSnapshot) {
