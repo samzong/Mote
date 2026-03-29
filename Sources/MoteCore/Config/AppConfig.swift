@@ -1,22 +1,11 @@
 import Foundation
 
 public struct AppConfig: Codable, Equatable, Sendable {
-    public struct Hotkey: Codable, Equatable, Sendable {
-        public var key: String
-        public var modifiers: [String]
-
-        public init(key: String, modifiers: [String]) {
-            self.key = key
-            self.modifiers = modifiers
-        }
-    }
-
     public var baseURL: String
     public var apiKey: String
     public var model: String
     public var temperature: Double
     public var maxTokens: Int
-    public var hotkey: Hotkey
 
     enum CodingKeys: String, CodingKey {
         case baseURL = "base_url"
@@ -24,7 +13,6 @@ public struct AppConfig: Codable, Equatable, Sendable {
         case model
         case temperature
         case maxTokens = "max_tokens"
-        case hotkey
     }
 
     public init(
@@ -32,15 +20,13 @@ public struct AppConfig: Codable, Equatable, Sendable {
         apiKey: String,
         model: String,
         temperature: Double,
-        maxTokens: Int,
-        hotkey: Hotkey
+        maxTokens: Int
     ) {
         self.baseURL = baseURL
         self.apiKey = apiKey
         self.model = model
         self.temperature = temperature
         self.maxTokens = maxTokens
-        self.hotkey = hotkey
     }
 
     public init(from decoder: Decoder) throws {
@@ -50,10 +36,6 @@ public struct AppConfig: Codable, Equatable, Sendable {
         self.model = try container.decodeIfPresent(String.self, forKey: .model) ?? ""
         self.temperature = try container.decodeIfPresent(Double.self, forKey: .temperature) ?? 0.2
         self.maxTokens = try container.decodeIfPresent(Int.self, forKey: .maxTokens) ?? 1024
-        self.hotkey = try container.decodeIfPresent(Hotkey.self, forKey: .hotkey) ?? .init(
-            key: "space",
-            modifiers: ["option"]
-        )
     }
 
     public static let `default` = AppConfig(
@@ -61,7 +43,6 @@ public struct AppConfig: Codable, Equatable, Sendable {
         apiKey: "",
         model: "",
         temperature: 0.2,
-        maxTokens: 1024,
-        hotkey: .init(key: "space", modifiers: ["option"])
+        maxTokens: 1024
     )
 }

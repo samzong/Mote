@@ -5,12 +5,17 @@ final class GlobalHotkeyMonitor: @unchecked Sendable {
     private static let fnFlag = CGEventFlags(rawValue: 0x0080_0000)
 
     private let onTrigger: @Sendable () -> Void
+    private let onManageTrigger: @Sendable () -> Void
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var fnDown = false
 
-    init(onTrigger: @escaping @Sendable () -> Void) {
+    init(
+        onTrigger: @escaping @Sendable () -> Void,
+        onManageTrigger: @escaping @Sendable () -> Void
+    ) {
         self.onTrigger = onTrigger
+        self.onManageTrigger = onManageTrigger
     }
 
     func start() {
@@ -69,6 +74,10 @@ final class GlobalHotkeyMonitor: @unchecked Sendable {
                     if event.flags.isDisjoint(with: otherModifiers) {
                         DispatchQueue.main.async { [onTrigger] in
                             onTrigger()
+                        }
+                    } else if event.flags.intersection(otherModifiers) == .maskAlternate {
+                        DispatchQueue.main.async { [onManageTrigger] in
+                            onManageTrigger()
                         }
                     }
                 }
