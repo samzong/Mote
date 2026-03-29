@@ -1,9 +1,9 @@
 import AppKit
 import MoteCore
+import ServiceManagement
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private var statusItem: NSStatusItem?
     private var hotkeyMonitor: GlobalHotkeyMonitor?
     private var composerPanel: ComposerPanel?
     private var selectionWatcher: SelectionWatcher?
@@ -12,14 +12,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_: Notification) {
         Logger.debug("AppDelegate.applicationDidFinishLaunching")
 
+        setupMainMenu()
+        setupLoginItem()
+
         composerPanel = ComposerPanel()
         composerPanel?.onDismiss = { [weak self] in
             Logger.debug("composerPanel.onDismiss -> re-enable watcher")
             self?.selectionWatcher?.isEnabled = true
             self?.selectionWatcher?.recheckAfterDelay()
         }
-
-        setupStatusItem()
 
         selectionWatcher = SelectionWatcher()
         selectionWatcher?.onActivate = { [weak self] snapshot in
@@ -86,28 +87,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         composerPanel?.show(for: snapshot)
     }
 
-    private func setupStatusItem() {
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        if let button = statusItem?.button {
-            button.image = NSImage(
-                systemSymbolName: "pencil.and.outline",
-                accessibilityDescription: "Mote"
-            )
-        }
-
-        let menu = NSMenu()
-        menu.addItem(NSMenuItem(
+    private func setupMainMenu() {
+        let appMenu = NSMenu()
+        appMenu.addItem(NSMenuItem(
             title: "Settings...",
             action: #selector(openSettings),
             keyEquivalent: ","
         ))
-        menu.addItem(.separator())
-        menu.addItem(NSMenuItem(
+        appMenu.addItem(.separator())
+        appMenu.addItem(NSMenuItem(
             title: "Quit Mote",
             action: #selector(NSApplication.terminate(_:)),
             keyEquivalent: "q"
         ))
-        statusItem?.menu = menu
+
+        let appMenuItem = NSMenuItem()
+        appMenuItem.submenu = appMenu
+
+        let mainMenu = NSMenu()
+        mainMenu.addItem(appMenuItem)
+        NSApp.mainMenu = mainMenu
+    }
+
+    private func setupLoginItem() {
+        let service = SMAppService.mainApp
+        if service.status == .notRegistered {
+            try? service.register()
+            Logger.debug("login-item: registered")
+        } else {
+            Logger.debug("login-item: status=\(service.status.rawValue)")
+        }
     }
 
     @objc private func openSettings() {
