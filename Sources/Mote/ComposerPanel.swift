@@ -23,11 +23,15 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
     private var rewriteTask: Task<Void, Never>?
     var hasResult = false
     var ignoreResign = false
-    private var instructionWasEmpty = true
+    var instructionWasEmpty = true
     var currentWritebackCapability: WritebackCapability = .manualOnly
     var isManualFallbackOnly = false
     var isManageMode = false
     var onDismiss: (() -> Void)?
+
+    let suggestionsContainer: NSView
+    var filteredCommands: [(name: String, prompt: String)] = []
+    var selectedSuggestionIndex = -1
 
     let panelWidth: CGFloat = 420
     let barHeight: CGFloat = 48
@@ -122,6 +126,10 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
         quitButton.contentTintColor = .systemRed
         quitButton.isHidden = true
 
+        suggestionsContainer = NSView()
+        suggestionsContainer.wantsLayer = true
+        suggestionsContainer.isHidden = true
+
         super.init()
         setUp()
     }
@@ -144,6 +152,7 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
         ] {
             container.addSubview(v)
         }
+        container.addSubview(suggestionsContainer)
 
         instructionField.delegate = self
         sendButton.target = self
@@ -199,6 +208,7 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
         updateButton.title = "Update"
         sendButton.isHidden = true
         spinner.isHidden = true
+        hideCommandSuggestions()
 
         container.cornerRadius = panelCornerRadius
         layoutInputBar()
@@ -264,6 +274,7 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
     func dismiss() {
         rewriteTask?.cancel()
         rewriteTask = nil
+        hideCommandSuggestions()
         panel.orderOut(nil)
         currentSnapshot = nil
         currentResult = nil
@@ -280,11 +291,7 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
     }
 
     @objc private func settingsClicked() {
-        let url = ConfigLoader.configURL()
-        if !FileManager.default.fileExists(atPath: url.path) {
-            try? ConfigLoader.saveDefaultFilesIfNeeded()
-        }
-        NSWorkspace.shared.open(url)
+        NSWorkspace.shared.open(ConfigLoader.configURL())
         dismiss()
     }
 
@@ -294,8 +301,9 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
 
     func controlTextDidChange(_: Notification) {
         guard !hasResult else { return }
-        let empty = instructionField.stringValue
-            .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let text = instructionField.stringValue
+        updateCommandSuggestions(text: text)
+        let empty = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         guard empty != instructionWasEmpty else { return }
         instructionWasEmpty = empty
         sendButton.isHidden = empty
@@ -305,6 +313,9 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
     func control(
         _: NSControl, textView _: NSTextView, doCommandBy sel: Selector
     ) -> Bool {
+        if handleSuggestionKeyDown(sel) {
+            return true
+        }
         let newlineSelectors: [Selector] = [
             #selector(NSResponder.insertNewline(_:)),
             #selector(NSResponder.insertLineBreak(_:)),

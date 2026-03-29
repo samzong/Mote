@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_: Notification) {
         Logger.debug("AppDelegate.applicationDidFinishLaunching")
 
+        try? ConfigLoader.saveDefaultFilesIfNeeded()
         setupLoginItem()
 
         composerPanel = ComposerPanel()

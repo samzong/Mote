@@ -20,7 +20,7 @@ struct PromptBuilderTests {
 
         #expect(messages.count == 2)
         #expect(messages[0].role == "system")
-        #expect(messages[0].content.contains("precise rewrite assistant"))
+        #expect(messages[0].content.contains("text rewriting engine"))
         #expect(messages[1].content == "Instruction:\nShorten this.\n\nSelected text:\nLong text")
     }
 }

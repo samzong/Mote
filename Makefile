@@ -1,6 +1,6 @@
 APP_NAME := Mote
 BUILD_DIR := .build
-APP_BUNDLE := $(HOME)/Applications/$(APP_NAME).app
+APP_BUNDLE := /Applications/$(APP_NAME).app
 
 .PHONY: help
 help:

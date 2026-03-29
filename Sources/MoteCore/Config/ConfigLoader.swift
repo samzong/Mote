@@ -26,5 +26,30 @@ public enum ConfigLoader {
             let data = try encoder.encode(AppConfig.default)
             try data.write(to: configURL(), options: .atomic)
         }
+
+        try saveDefaultCommandsIfNeeded()
+    }
+
+    private static func saveDefaultCommandsIfNeeded() throws {
+        let fileManager = FileManager.default
+        let commandsDir = CommandLoader.commandsDirectory()
+        try fileManager.createDirectory(at: commandsDir, withIntermediateDirectories: true)
+
+        let defaults: [(String, String)] = [
+            ("translate", "Translate the text to English."),
+            ("fix", "Fix grammar, spelling, and punctuation errors."),
+            ("polish", "Improve clarity and readability while preserving the original meaning."),
+            ("shorten", "Make the text more concise without losing key information."),
+            ("expand", "Elaborate and add more detail to the text."),
+            ("formal", "Rewrite in a formal, professional tone."),
+            ("casual", "Rewrite in a casual, conversational tone."),
+        ]
+
+        for (name, prompt) in defaults {
+            let url = commandsDir.appendingPathComponent("\(name).md")
+            if !fileManager.fileExists(atPath: url.path) {
+                try prompt.write(to: url, atomically: true, encoding: .utf8)
+            }
+        }
     }
 }
