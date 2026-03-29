@@ -39,7 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onManageTrigger: { [weak self] in
                 Task { @MainActor in
                     Logger.debug("GlobalHotkeyMonitor manage triggered")
-                    self?.composerPanel?.showManagement()
+                    self?.handleHotkey(showQuit: true)
                 }
             }
         )
@@ -47,8 +47,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Logger.debug("AppDelegate init complete")
     }
 
-    private func handleHotkey() {
-        Logger.debug("handleHotkey() composerPanel=\(composerPanel != nil)")
+    private func handleHotkey(showQuit: Bool = false) {
+        Logger.debug("handleHotkey() composerPanel=\(composerPanel != nil) showQuit=\(showQuit)")
         guard let composerPanel else { return }
 
         if composerPanel.isVisible {
@@ -59,7 +59,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if let snapshot = selectionWatcher?.activeSnapshot {
             Logger.debug("handleHotkey() using watcher snapshot text.count=\(snapshot.context.text.count)")
-            showPanel(for: snapshot)
+            showPanel(for: snapshot, showQuit: showQuit)
             return
         }
 
@@ -74,7 +74,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let snapshot = reader.readFocusedSelection() {
             let b = String(describing: snapshot.context.bounds)
             Logger.debug("handleHotkey() AX text.count=\(snapshot.context.text.count) bounds=\(b)")
-            showPanel(for: snapshot)
+            showPanel(for: snapshot, showQuit: showQuit)
             return
         }
 
@@ -85,14 +85,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
             Logger.debug("handleHotkey() clipboard got text.count=\(snapshot.context.text.count)")
-            self.showPanel(for: snapshot)
+            self.showPanel(for: snapshot, showQuit: showQuit)
         }
     }
 
-    private func showPanel(for snapshot: AXSelectionSnapshot) {
+    private func showPanel(for snapshot: AXSelectionSnapshot, showQuit: Bool = false) {
         selectionWatcher?.hideDot()
         selectionWatcher?.isEnabled = false
-        composerPanel?.show(for: snapshot)
+        composerPanel?.show(for: snapshot, showQuit: showQuit)
     }
 
     private func setupLoginItem() {

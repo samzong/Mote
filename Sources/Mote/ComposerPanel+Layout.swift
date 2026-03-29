@@ -6,14 +6,19 @@ extension ComposerPanel {
         let w = panelWidth
         let showSend = !sendButton.isHidden
         let showSpin = !spinner.isHidden
+        let showQuit = !quitButton.isHidden
 
-        let rightSize: CGFloat = showSend ? 24 : (showSpin ? 16 : 0)
+        let quitW = showQuit ? quitButton.intrinsicContentSize.width + 8 : 0
+        let rightSize: CGFloat = showSend ? 24 : (showSpin ? 16 : quitW)
         let rightGap: CGFloat = rightSize > 0 ? 10 : 0
         let fieldW = w - hPad * 2 - rightSize - rightGap
         instructionField.frame = NSRect(x: hPad, y: (h - 22) / 2, width: fieldW, height: 22)
 
         sendButton.frame = NSRect(x: w - hPad - 24, y: (h - 24) / 2, width: 24, height: 24)
         spinner.frame = NSRect(x: w - hPad - 16, y: (h - 16) / 2, width: 16, height: 16)
+        if showQuit {
+            quitButton.frame = NSRect(x: w - hPad - quitW, y: (h - 28) / 2, width: quitW, height: 28)
+        }
     }
 
     func layoutResultState(animate: Bool) {
@@ -82,29 +87,6 @@ extension ComposerPanel {
         } else {
             panel.setFrame(frame, display: true)
         }
-    }
-
-    func layoutManageRow(totalH: CGFloat) {
-        let w = panelWidth
-        let rowY: CGFloat = 0
-        let rowH: CGFloat = totalH - barHeight
-
-        manageSeparator.frame = NSRect(
-            x: hPad, y: rowH - 0.5,
-            width: w - hPad * 2, height: 0.5
-        )
-
-        let quitW = quitButton.intrinsicContentSize.width + 8
-        quitButton.frame = NSRect(
-            x: w - hPad - quitW, y: rowY + (rowH - 28) / 2,
-            width: quitW, height: 28
-        )
-
-        let settingsW = settingsButton.intrinsicContentSize.width + 8
-        settingsButton.frame = NSRect(
-            x: hPad, y: rowY + (rowH - 28) / 2,
-            width: settingsW, height: 28
-        )
     }
 
     func positionPanel(near bounds: CGRect?) {

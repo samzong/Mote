@@ -13,8 +13,6 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
     let cancelButton: NSButton
     let updateButton: NSButton
     let separator: NSView
-    let manageSeparator: NSView
-    let settingsButton: NSButton
     let quitButton: NSButton
 
     private nonisolated(unsafe) var localKeyMonitor: Any?
@@ -26,7 +24,7 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
     var instructionWasEmpty = true
     var currentWritebackCapability: WritebackCapability = .manualOnly
     var isManualFallbackOnly = false
-    var isManageMode = false
+    private var showsQuit = false
     var onDismiss: (() -> Void)?
 
     let suggestionsContainer: NSView
@@ -109,20 +107,9 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
         separator.layer?.backgroundColor = NSColor.separatorColor.cgColor
         separator.isHidden = true
 
-        manageSeparator = NSView()
-        manageSeparator.wantsLayer = true
-        manageSeparator.layer?.backgroundColor = NSColor.separatorColor.cgColor
-        manageSeparator.isHidden = true
-
-        settingsButton = NSButton(title: "Settings…", target: nil, action: nil)
-        settingsButton.isBordered = false
-        settingsButton.font = .systemFont(ofSize: 13)
-        settingsButton.contentTintColor = .secondaryLabelColor
-        settingsButton.isHidden = true
-
-        quitButton = NSButton(title: "Quit Mote", target: nil, action: nil)
+        quitButton = NSButton(title: "Quit", target: nil, action: nil)
         quitButton.isBordered = false
-        quitButton.font = .systemFont(ofSize: 13)
+        quitButton.font = .systemFont(ofSize: 13, weight: .medium)
         quitButton.contentTintColor = .systemRed
         quitButton.isHidden = true
 
@@ -147,8 +134,7 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
         for v: NSView in [
             resultLabel, statusLabel, separator,
             instructionField, sendButton, spinner,
-            cancelButton, updateButton,
-            manageSeparator, settingsButton, quitButton,
+            cancelButton, updateButton, quitButton,
         ] {
             container.addSubview(v)
         }
@@ -161,8 +147,6 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
         cancelButton.action = #selector(cancelClicked)
         updateButton.target = self
         updateButton.action = #selector(updateClicked)
-        settingsButton.target = self
-        settingsButton.action = #selector(settingsClicked)
         quitButton.target = self
         quitButton.action = #selector(quitClicked)
 
@@ -188,13 +172,14 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
         dismiss()
     }
 
-    func show(for snapshot: AXSelectionSnapshot) {
+    func show(for snapshot: AXSelectionSnapshot, showQuit: Bool = false) {
         currentSnapshot = snapshot
         currentResult = nil
         hasResult = false
         instructionWasEmpty = true
         currentWritebackCapability = snapshot.writebackCapability
         isManualFallbackOnly = false
+        showsQuit = showQuit
 
         instructionField.stringValue = ""
         instructionField.placeholderString = "Describe your change"
@@ -208,6 +193,7 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
         updateButton.title = "Update"
         sendButton.isHidden = true
         spinner.isHidden = true
+        quitButton.isHidden = !showQuit
         hideCommandSuggestions()
 
         container.cornerRadius = panelCornerRadius
@@ -226,51 +212,6 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
         }
     }
 
-    func showManagement() {
-        if panel.isVisible, isManageMode {
-            dismiss()
-            return
-        }
-        if panel.isVisible { dismiss() }
-
-        isManageMode = true
-        currentSnapshot = nil
-        currentResult = nil
-        hasResult = false
-
-        instructionField.stringValue = ""
-        instructionField.placeholderString = "Fn to rewrite selected text"
-        instructionField.isEnabled = false
-        resultLabel.isHidden = true
-        statusLabel.isHidden = true
-        separator.isHidden = true
-        cancelButton.isHidden = true
-        updateButton.isHidden = true
-        sendButton.isHidden = true
-        spinner.isHidden = true
-
-        manageSeparator.isHidden = false
-        settingsButton.isHidden = false
-        quitButton.isHidden = false
-
-        let manageRowH: CGFloat = 36
-        let totalH = barHeight + manageRowH
-        container.cornerRadius = panelCornerRadius
-        layoutInputBar()
-        layoutManageRow(totalH: totalH)
-        panel.setFrame(
-            NSRect(x: 0, y: 0, width: panelWidth, height: totalH),
-            display: false
-        )
-        positionPanel(near: nil)
-
-        ignoreResign = true
-        panel.makeKeyAndOrderFront(nil)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-            self?.ignoreResign = false
-        }
-    }
-
     func dismiss() {
         rewriteTask?.cancel()
         rewriteTask = nil
@@ -281,18 +222,11 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
         hasResult = false
         currentWritebackCapability = .manualOnly
         isManualFallbackOnly = false
-        isManageMode = false
+        showsQuit = false
         statusLabel.stringValue = ""
         statusLabel.isHidden = true
-        manageSeparator.isHidden = true
-        settingsButton.isHidden = true
         quitButton.isHidden = true
         onDismiss?()
-    }
-
-    @objc private func settingsClicked() {
-        NSWorkspace.shared.open(ConfigLoader.configURL())
-        dismiss()
     }
 
     @objc private func quitClicked() {
@@ -307,6 +241,7 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
         guard empty != instructionWasEmpty else { return }
         instructionWasEmpty = empty
         sendButton.isHidden = empty
+        quitButton.isHidden = !showsQuit || !empty
         layoutInputBar()
     }
 
@@ -420,6 +355,7 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
         cancelButton.isHidden = false
         updateButton.isHidden = false
         sendButton.isHidden = true
+        quitButton.isHidden = true
         instructionField.stringValue = ""
         instructionField.placeholderString = "Ask for another edit"
         isManualFallbackOnly = false
