@@ -306,10 +306,7 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
             do {
                 let config = try ConfigLoader.loadConfig()
                 let request = RewriteRequest(
-                    preset: RewritePreset(
-                        id: "custom", name: "Custom",
-                        description: "", order: 0, prompt: instruction
-                    ),
+                    preset: RewritePreset(prompt: instruction),
                     instruction: instruction,
                     selection: context
                 )

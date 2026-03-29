@@ -5,13 +5,7 @@ struct PromptBuilderTests {
     @Test
     func usesPresetTemplateWhenInstructionIsBlank() {
         let request = RewriteRequest(
-            preset: RewritePreset(
-                id: "shorten",
-                name: "Shorten",
-                description: "Shorten text.",
-                order: 30,
-                prompt: "Shorten this."
-            ),
+            preset: RewritePreset(prompt: "Shorten this."),
             instruction: "   ",
             selection: SelectionContext(bundleIdentifier: "com.apple.TextEdit", text: "Long text")
         )

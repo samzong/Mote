@@ -1,4 +1,3 @@
-import CoreGraphics
 import Foundation
 
 public struct SelectionRange: Equatable, Sendable {
