@@ -13,6 +13,9 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
     let cancelButton: NSButton
     let updateButton: NSButton
     let separator: NSView
+    let manageSeparator: NSView
+    let settingsButton: NSButton
+    let quitButton: NSButton
 
     private nonisolated(unsafe) var localKeyMonitor: Any?
     var currentSnapshot: AXSelectionSnapshot?
@@ -23,6 +26,7 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
     private var instructionWasEmpty = true
     var currentWritebackCapability: WritebackCapability = .manualOnly
     var isManualFallbackOnly = false
+    var isManageMode = false
     var onDismiss: (() -> Void)?
 
     let panelWidth: CGFloat = 420
@@ -101,6 +105,23 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
         separator.layer?.backgroundColor = NSColor.separatorColor.cgColor
         separator.isHidden = true
 
+        manageSeparator = NSView()
+        manageSeparator.wantsLayer = true
+        manageSeparator.layer?.backgroundColor = NSColor.separatorColor.cgColor
+        manageSeparator.isHidden = true
+
+        settingsButton = NSButton(title: "Settings…", target: nil, action: nil)
+        settingsButton.isBordered = false
+        settingsButton.font = .systemFont(ofSize: 13)
+        settingsButton.contentTintColor = .secondaryLabelColor
+        settingsButton.isHidden = true
+
+        quitButton = NSButton(title: "Quit Mote", target: nil, action: nil)
+        quitButton.isBordered = false
+        quitButton.font = .systemFont(ofSize: 13)
+        quitButton.contentTintColor = .systemRed
+        quitButton.isHidden = true
+
         super.init()
         setUp()
     }
@@ -119,6 +140,7 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
             resultLabel, statusLabel, separator,
             instructionField, sendButton, spinner,
             cancelButton, updateButton,
+            manageSeparator, settingsButton, quitButton,
         ] {
             container.addSubview(v)
         }
@@ -130,6 +152,10 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
         cancelButton.action = #selector(cancelClicked)
         updateButton.target = self
         updateButton.action = #selector(updateClicked)
+        settingsButton.target = self
+        settingsButton.action = #selector(settingsClicked)
+        quitButton.target = self
+        quitButton.action = #selector(quitClicked)
 
         NotificationCenter.default.addObserver(
             self, selector: #selector(panelDidResignKey),
@@ -190,6 +216,51 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
         }
     }
 
+    func showManagement() {
+        if panel.isVisible, isManageMode {
+            dismiss()
+            return
+        }
+        if panel.isVisible { dismiss() }
+
+        isManageMode = true
+        currentSnapshot = nil
+        currentResult = nil
+        hasResult = false
+
+        instructionField.stringValue = ""
+        instructionField.placeholderString = "Fn to rewrite selected text"
+        instructionField.isEnabled = false
+        resultLabel.isHidden = true
+        statusLabel.isHidden = true
+        separator.isHidden = true
+        cancelButton.isHidden = true
+        updateButton.isHidden = true
+        sendButton.isHidden = true
+        spinner.isHidden = true
+
+        manageSeparator.isHidden = false
+        settingsButton.isHidden = false
+        quitButton.isHidden = false
+
+        let manageRowH: CGFloat = 36
+        let totalH = barHeight + manageRowH
+        container.cornerRadius = panelCornerRadius
+        layoutInputBar()
+        layoutManageRow(totalH: totalH)
+        panel.setFrame(
+            NSRect(x: 0, y: 0, width: panelWidth, height: totalH),
+            display: false
+        )
+        positionPanel(near: nil)
+
+        ignoreResign = true
+        panel.makeKeyAndOrderFront(nil)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            self?.ignoreResign = false
+        }
+    }
+
     func dismiss() {
         rewriteTask?.cancel()
         rewriteTask = nil
@@ -199,9 +270,26 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
         hasResult = false
         currentWritebackCapability = .manualOnly
         isManualFallbackOnly = false
+        isManageMode = false
         statusLabel.stringValue = ""
         statusLabel.isHidden = true
+        manageSeparator.isHidden = true
+        settingsButton.isHidden = true
+        quitButton.isHidden = true
         onDismiss?()
+    }
+
+    @objc private func settingsClicked() {
+        let url = ConfigLoader.configURL()
+        if !FileManager.default.fileExists(atPath: url.path) {
+            try? ConfigLoader.saveDefaultFilesIfNeeded()
+        }
+        NSWorkspace.shared.open(url)
+        dismiss()
+    }
+
+    @objc private func quitClicked() {
+        NSApp.terminate(nil)
     }
 
     func controlTextDidChange(_: Notification) {

@@ -24,6 +24,10 @@
     <string>15.0</string>
     <key>LSUIElement</key>
     <true/>
+    <key>NSSupportsAutomaticTermination</key>
+    <false/>
+    <key>NSSupportsSuddenTermination</key>
+    <false/>
     <key>NSAppleEventsUsageDescription</key>
     <string>Mote needs automation access to update selected text in other apps.</string>
 </dict>

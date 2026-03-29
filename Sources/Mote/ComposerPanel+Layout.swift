@@ -84,6 +84,29 @@ extension ComposerPanel {
         }
     }
 
+    func layoutManageRow(totalH: CGFloat) {
+        let w = panelWidth
+        let rowY: CGFloat = 0
+        let rowH: CGFloat = totalH - barHeight
+
+        manageSeparator.frame = NSRect(
+            x: hPad, y: rowH - 0.5,
+            width: w - hPad * 2, height: 0.5
+        )
+
+        let quitW = quitButton.intrinsicContentSize.width + 8
+        quitButton.frame = NSRect(
+            x: w - hPad - quitW, y: rowY + (rowH - 28) / 2,
+            width: quitW, height: 28
+        )
+
+        let settingsW = settingsButton.intrinsicContentSize.width + 8
+        settingsButton.frame = NSRect(
+            x: hPad, y: rowY + (rowH - 28) / 2,
+            width: settingsW, height: 28
+        )
+    }
+
     func positionPanel(near bounds: CGRect?) {
         guard let screen = NSScreen.main else { panel.center(); return }
         guard let bounds else { panel.center(); return }

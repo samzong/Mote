@@ -8,8 +8,7 @@ struct OpenAICompatibleClientTests {
         apiKey: "lm-studio",
         model: "qwen2.5-7b-instruct",
         temperature: 0.2,
-        maxTokens: 1024,
-        hotkey: .init(key: "space", modifiers: ["option"])
+        maxTokens: 1024
     )
 
     @Test

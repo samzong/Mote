@@ -44,6 +44,7 @@ install:
 	mkdir -p $(APP_BUNDLE)/Contents/MacOS
 	cp $(BUILD_DIR)/release/$(APP_NAME) $(APP_BUNDLE)/Contents/MacOS/$(APP_NAME)
 	cp Resources/Info.plist $(APP_BUNDLE)/Contents/Info.plist
+	codesign --force --sign - $(APP_BUNDLE)
 	@printf "Installed to %s\n" "$(APP_BUNDLE)"
 
 .PHONY: uninstall

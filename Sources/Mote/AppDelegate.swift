@@ -12,7 +12,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_: Notification) {
         Logger.debug("AppDelegate.applicationDidFinishLaunching")
 
-        setupMainMenu()
         setupLoginItem()
 
         composerPanel = ComposerPanel()
@@ -29,12 +28,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         selectionWatcher?.start()
 
-        hotkeyMonitor = GlobalHotkeyMonitor { [weak self] in
-            Task { @MainActor in
-                Logger.debug("GlobalHotkeyMonitor triggered")
-                self?.handleHotkey()
+        hotkeyMonitor = GlobalHotkeyMonitor(
+            onTrigger: { [weak self] in
+                Task { @MainActor in
+                    Logger.debug("GlobalHotkeyMonitor triggered")
+                    self?.handleHotkey()
+                }
+            },
+            onManageTrigger: { [weak self] in
+                Task { @MainActor in
+                    Logger.debug("GlobalHotkeyMonitor manage triggered")
+                    self?.composerPanel?.showManagement()
+                }
             }
-        }
+        )
         hotkeyMonitor?.start()
         Logger.debug("AppDelegate init complete")
     }
@@ -87,28 +94,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         composerPanel?.show(for: snapshot)
     }
 
-    private func setupMainMenu() {
-        let appMenu = NSMenu()
-        appMenu.addItem(NSMenuItem(
-            title: "Settings...",
-            action: #selector(openSettings),
-            keyEquivalent: ","
-        ))
-        appMenu.addItem(.separator())
-        appMenu.addItem(NSMenuItem(
-            title: "Quit Mote",
-            action: #selector(NSApplication.terminate(_:)),
-            keyEquivalent: "q"
-        ))
-
-        let appMenuItem = NSMenuItem()
-        appMenuItem.submenu = appMenu
-
-        let mainMenu = NSMenu()
-        mainMenu.addItem(appMenuItem)
-        NSApp.mainMenu = mainMenu
-    }
-
     private func setupLoginItem() {
         let service = SMAppService.mainApp
         if service.status == .notRegistered {
@@ -117,13 +102,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             Logger.debug("login-item: status=\(service.status.rawValue)")
         }
-    }
-
-    @objc private func openSettings() {
-        let url = ConfigLoader.configURL()
-        if !FileManager.default.fileExists(atPath: url.path) {
-            try? ConfigLoader.saveDefaultFilesIfNeeded()
-        }
-        NSWorkspace.shared.open(url)
     }
 }
