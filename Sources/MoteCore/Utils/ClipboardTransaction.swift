@@ -1,12 +1,13 @@
 import AppKit
 import Foundation
 
-public struct ClipboardTransaction {
+public final class ClipboardTransaction {
     private struct ItemSnapshot {
         var values: [String: Data]
     }
 
     private let snapshots: [ItemSnapshot]
+    private var ownedChangeCount: Int?
 
     public init(pasteboard: NSPasteboard = .general) {
         snapshots = (pasteboard.pasteboardItems ?? []).map { item in
@@ -23,10 +24,16 @@ public struct ClipboardTransaction {
     public func write(string: String, to pasteboard: NSPasteboard = .general) {
         pasteboard.clearContents()
         pasteboard.setString(string, forType: .string)
+        ownedChangeCount = pasteboard.changeCount
+    }
+
+    public func claimCurrentContents(from pasteboard: NSPasteboard = .general) {
+        ownedChangeCount = pasteboard.changeCount
     }
 
     public func restore(to pasteboard: NSPasteboard = .general) {
         pasteboard.clearContents()
+        ownedChangeCount = nil
 
         guard !snapshots.isEmpty else {
             return
@@ -41,5 +48,15 @@ public struct ClipboardTransaction {
         }
 
         pasteboard.writeObjects(items)
+    }
+
+    @discardableResult
+    public func restoreIfOwned(to pasteboard: NSPasteboard = .general) -> Bool {
+        guard let ownedChangeCount, pasteboard.changeCount == ownedChangeCount else {
+            return false
+        }
+
+        restore(to: pasteboard)
+        return true
     }
 }

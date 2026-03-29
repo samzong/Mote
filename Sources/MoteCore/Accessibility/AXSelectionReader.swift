@@ -16,7 +16,7 @@ public final class AXSelectionReader {
         }
 
         let systemWide = AXUIElementCreateSystemWide()
-        guard let focusedElement = focusedElement(from: systemWide) else {
+        guard let focusedElement = AXTextElementSupport.focusedElement(from: systemWide) else {
             Logger.debug("ax-read: no focused element")
             return nil
         }
@@ -41,41 +41,83 @@ public final class AXSelectionReader {
         NSWorkspace.shared.frontmostApplication?.bundleIdentifier
     }
 
-    private func focusedElement(from systemWide: AXUIElement) -> AXUIElement? {
-        var value: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(
-            systemWide,
-            kAXFocusedUIElementAttribute as CFString,
-            &value
-        )
-
-        guard result == .success, let value, CFGetTypeID(value) == AXUIElementGetTypeID() else {
+    public func validatedSelection(for snapshot: AXSelectionSnapshot) -> AXSelectionSnapshot? {
+        guard snapshot.proof.isProven,
+              let currentSnapshot = readFocusedSelection(),
+              currentSnapshot.context.processIdentifier == snapshot.context.processIdentifier,
+              currentSnapshot.context.text == snapshot.context.text
+        else {
             return nil
         }
 
-        return (value as! AXUIElement)
+        switch (snapshot.proof, currentSnapshot.proof) {
+            case let (.exactRange(lhs), .exactRange(rhs)):
+                return lhs == rhs ? currentSnapshot : nil
+            case let (.textMarker(lhs), .textMarker(rhs)):
+                return lhs == rhs ? currentSnapshot : nil
+            case let (.hostAdapterProof(lhs), .hostAdapterProof(rhs)):
+                return lhs == rhs ? currentSnapshot : nil
+            case (.unproven, _), (_, .unproven):
+                return nil
+            default:
+                return nil
+        }
     }
 
     private func snapshot(for element: AXUIElement, fallbackElement: AXUIElement) -> AXSelectionSnapshot? {
-        guard let range = selectedRange(for: element), range.length > 0 else {
-            Logger.debug("ax-snap: no range or zero-length")
+        let range = selectedRange(for: element)
+        let textMarkerRange = selectedTextMarkerRange(for: element)
+        let fieldText = AXTextElementSupport.stringAttribute(kAXValueAttribute as CFString, element: element)
+
+        let text: String? = if let range, range.length > 0 {
+            selectedText(for: element, range: range)
+        } else if let textMarkerRange {
+            selectedText(for: element, textMarkerRange: textMarkerRange)
+        } else {
+            AXTextElementSupport.stringAttribute(kAXSelectedTextAttribute as CFString, element: element)
+        }
+
+        guard let text, !text.isEmpty else {
+            Logger.debug("ax-snap: no text from any method")
             return nil
         }
 
-        guard let text = selectedText(for: element, range: range), !text.isEmpty else {
-            Logger.debug("ax-snap: no text for range loc=\(range.location) len=\(range.length)")
-            return nil
+        let proof: SelectionProof
+        let effectiveRange: SelectionRange
+        if let range, range.length > 0 {
+            proof = .exactRange(range)
+            effectiveRange = range
+        } else if let uniqueRange = AXTextElementSupport.uniqueRange(of: text, in: fieldText) {
+            proof = .exactRange(uniqueRange)
+            effectiveRange = uniqueRange
+        } else if let textMarkerRange {
+            proof = .textMarker(textMarkerRange)
+            effectiveRange = SelectionRange(location: 0, length: (text as NSString).length)
+        } else {
+            proof = .unproven
+            effectiveRange = SelectionRange(location: 0, length: (text as NSString).length)
         }
 
         let processIdentifier = processIdentifier(for: element) ?? processIdentifier(for: fallbackElement)
         let bundleIdentifier = processIdentifier
             .flatMap { NSRunningApplication(processIdentifier: $0)?.bundleIdentifier }
-        let bounds = boundsResolver.resolveSelectionBounds(for: element, range: range)
-            ?? boundsResolver.resolveElementBounds(for: element)
-            ?? boundsResolver.resolveElementBounds(for: fallbackElement)
 
-        let sec = isSecure(element: element)
-        let wrt = isWritable(element: element)
+        let bounds: CGRect? = switch proof {
+            case let .exactRange(range):
+                boundsResolver.resolveSelectionBounds(for: element, range: range)
+                    ?? boundsResolver.resolveElementBounds(for: element)
+                    ?? boundsResolver.resolveElementBounds(for: fallbackElement)
+            case let .textMarker(textMarkerRange):
+                boundsResolver.resolveTextMarkerRangeBounds(for: element, proof: textMarkerRange)
+                    ?? boundsResolver.resolveElementBounds(for: element)
+                    ?? boundsResolver.resolveElementBounds(for: fallbackElement)
+            case .hostAdapterProof, .unproven:
+                boundsResolver.resolveElementBounds(for: element)
+                    ?? boundsResolver.resolveElementBounds(for: fallbackElement)
+        }
+
+        let sec = AXTextElementSupport.isSecure(element: element)
+        let wrt = AXTextElementSupport.isWritable(element: element)
         Logger.debug(
             "ax-snap: text=\(text.count) pid=\(processIdentifier ?? 0) " +
                 "bundle=\(bundleIdentifier ?? "nil") sec=\(sec) wrt=\(wrt)"
@@ -85,10 +127,12 @@ public final class AXSelectionReader {
             bundleIdentifier: bundleIdentifier,
             processIdentifier: processIdentifier ?? 0,
             text: text,
-            range: range,
+            range: effectiveRange,
             bounds: bounds,
-            isSecure: isSecure(element: element) || isSecure(element: fallbackElement),
-            isWritable: isWritable(element: element) || isWritable(element: fallbackElement)
+            isSecure: AXTextElementSupport.isSecure(element: element) || AXTextElementSupport
+                .isSecure(element: fallbackElement),
+            isWritable: AXTextElementSupport.isWritable(element: element) ||
+                AXTextElementSupport.isWritable(element: fallbackElement)
         )
 
         guard context.isValid else {
@@ -96,7 +140,14 @@ public final class AXSelectionReader {
             return nil
         }
 
-        return AXSelectionSnapshot(element: element, context: context)
+        let writebackCapability = proof.defaultWritebackCapability(isWritable: context.isWritable)
+        return AXSelectionSnapshot(
+            element: element,
+            context: context,
+            proof: proof,
+            writebackCapability: writebackCapability,
+            fieldText: fieldText
+        )
     }
 
     private func candidateElements(startingAt focusedElement: AXUIElement) -> [AXUIElement] {
@@ -191,18 +242,28 @@ public final class AXSelectionReader {
         return SelectionRange(location: range.location, length: range.length)
     }
 
-    private func stringAttribute(_ attribute: CFString, element: AXUIElement) -> String? {
+    private func selectedTextMarkerRange(for element: AXUIElement) -> TextMarkerRangeProof? {
         var value: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(element, attribute, &value)
-        guard result == .success, let value else {
+        let result = AXUIElementCopyAttributeValue(
+            element,
+            "AXSelectedTextMarkerRange" as CFString,
+            &value
+        )
+        guard result == .success,
+              let value,
+              CFGetTypeID(value) == AXTextMarkerRangeGetTypeID()
+        else {
             return nil
         }
 
-        return value as? String
+        let textMarkerRange = value as! AXTextMarkerRange
+        return serializeTextMarkerRange(textMarkerRange)
     }
 
     private func selectedText(for element: AXUIElement, range: SelectionRange) -> String? {
-        if let text = stringAttribute(kAXSelectedTextAttribute as CFString, element: element), !text.isEmpty {
+        if let text = AXTextElementSupport.stringAttribute(kAXSelectedTextAttribute as CFString, element: element),
+           !text.isEmpty
+        {
             return text
         }
 
@@ -210,7 +271,7 @@ public final class AXSelectionReader {
             return text
         }
 
-        guard let value = stringAttribute(kAXValueAttribute as CFString, element: element) else {
+        guard let value = AXTextElementSupport.stringAttribute(kAXValueAttribute as CFString, element: element) else {
             return nil
         }
 
@@ -221,6 +282,20 @@ public final class AXSelectionReader {
         }
 
         return nsValue.substring(with: selectedRange)
+    }
+
+    private func selectedText(for element: AXUIElement, textMarkerRange: TextMarkerRangeProof) -> String? {
+        if let text = stringForTextMarkerRange(element: element, proof: textMarkerRange), !text.isEmpty {
+            return text
+        }
+
+        if let text = AXTextElementSupport.stringAttribute(kAXSelectedTextAttribute as CFString, element: element),
+           !text.isEmpty
+        {
+            return text
+        }
+
+        return nil
     }
 
     private func stringForRange(element: AXUIElement, range: SelectionRange) -> String? {
@@ -244,26 +319,27 @@ public final class AXSelectionReader {
         return value as? String
     }
 
-    private func boolAttribute(_ attribute: CFString, element: AXUIElement) -> Bool? {
+    private func stringForTextMarkerRange(
+        element: AXUIElement,
+        proof: TextMarkerRangeProof
+    ) -> String? {
+        guard let textMarkerRange = AXTextElementSupport.textMarkerRange(from: proof) else {
+            return nil
+        }
+
         var value: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(element, attribute, &value)
+        let result = AXUIElementCopyParameterizedAttributeValue(
+            element,
+            "AXStringForTextMarkerRange" as CFString,
+            textMarkerRange,
+            &value
+        )
+
         guard result == .success, let value else {
             return nil
         }
 
-        return value as? Bool
-    }
-
-    private func isSecure(element: AXUIElement) -> Bool {
-        if boolAttribute("AXValueProtected" as CFString, element: element) == true {
-            return true
-        }
-
-        if boolAttribute("AXProtectedContent" as CFString, element: element) == true {
-            return true
-        }
-
-        return false
+        return value as? String
     }
 
     private func processIdentifier(for element: AXUIElement) -> pid_t? {
@@ -275,25 +351,30 @@ public final class AXSelectionReader {
         return pid
     }
 
-    private func isWritable(element: AXUIElement) -> Bool {
-        var selectedTextSettable = DarwinBoolean(false)
-        if AXUIElementIsAttributeSettable(
-            element,
-            kAXSelectedTextAttribute as CFString,
-            &selectedTextSettable
-        ) == .success, selectedTextSettable.boolValue {
-            return true
-        }
-
-        var valueSettable = DarwinBoolean(false)
-        return AXUIElementIsAttributeSettable(
-            element,
-            kAXValueAttribute as CFString,
-            &valueSettable
-        ) == .success && valueSettable.boolValue
-    }
-
     private func opaquePointer(for element: AXUIElement) -> OpaquePointer {
         OpaquePointer(Unmanaged.passUnretained(element).toOpaque())
+    }
+
+    private func serializeTextMarkerRange(_ textMarkerRange: AXTextMarkerRange) -> TextMarkerRangeProof? {
+        let startMarker = AXTextMarkerRangeCopyStartMarker(textMarkerRange)
+        let endMarker = AXTextMarkerRangeCopyEndMarker(textMarkerRange)
+
+        guard let startData = data(for: startMarker),
+              let endData = data(for: endMarker)
+        else {
+            return nil
+        }
+
+        return TextMarkerRangeProof(startMarker: startData, endMarker: endData)
+    }
+
+    private func data(for textMarker: AXTextMarker) -> Data? {
+        let length = AXTextMarkerGetLength(textMarker)
+        guard length > 0 else {
+            return nil
+        }
+
+        let bytePointer = AXTextMarkerGetBytePtr(textMarker)
+        return Data(bytes: bytePointer, count: length)
     }
 }

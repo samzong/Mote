@@ -35,6 +35,39 @@ public final class AXBoundsResolver {
         return rect.isNull || rect.isEmpty ? nil : rect
     }
 
+    public func resolveTextMarkerRangeBounds(
+        for element: AXUIElement,
+        proof: TextMarkerRangeProof
+    ) -> CGRect? {
+        guard let rangeValue = AXTextElementSupport.textMarkerRange(from: proof) else {
+            return nil
+        }
+
+        var value: CFTypeRef?
+        let result = AXUIElementCopyParameterizedAttributeValue(
+            element,
+            "AXBoundsForTextMarkerRange" as CFString,
+            rangeValue,
+            &value
+        )
+
+        guard result == .success, let axValue = value, CFGetTypeID(axValue) == AXValueGetTypeID() else {
+            return nil
+        }
+
+        let castValue = axValue as! AXValue
+        guard AXValueGetType(castValue) == .cgRect else {
+            return nil
+        }
+
+        var rect = CGRect.zero
+        guard AXValueGetValue(castValue, .cgRect, &rect) else {
+            return nil
+        }
+
+        return rect.isNull || rect.isEmpty ? nil : rect
+    }
+
     public func resolveElementBounds(for element: AXUIElement) -> CGRect? {
         guard
             let position = pointAttribute(kAXPositionAttribute as CFString, element: element),

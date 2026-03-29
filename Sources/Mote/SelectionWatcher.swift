@@ -86,6 +86,10 @@ final class SelectionWatcher {
         }
     }
 
+    static func mousePositionBounds() -> CGRect {
+        AXTextElementSupport.mousePositionInAXCoordinates()
+    }
+
     private func checkSelection() {
         Logger.debug("checkSelection() isEnabled=\(isEnabled)")
         guard isEnabled else {
@@ -106,14 +110,30 @@ final class SelectionWatcher {
 
         let text = snapshot.context.text
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, let bounds = snapshot.context.bounds else {
-            Logger.debug("checkSelection() SKIP: empty text or nil bounds")
+        guard !trimmed.isEmpty else {
+            Logger.debug("checkSelection() SKIP: empty text")
             hideDot()
             return
         }
 
-        Logger.debug("checkSelection() text.count=\(text.count) bounds=\(bounds)")
-        currentSnapshot = snapshot
+        let effectiveSnapshot: AXSelectionSnapshot
+        if snapshot.context.bounds != nil {
+            effectiveSnapshot = snapshot
+        } else {
+            var patched = snapshot.context
+            patched.bounds = Self.mousePositionBounds()
+            effectiveSnapshot = AXSelectionSnapshot(
+                element: snapshot.element,
+                context: patched,
+                proof: snapshot.proof,
+                writebackCapability: snapshot.writebackCapability,
+                fieldText: snapshot.fieldText
+            )
+        }
+
+        let bounds = effectiveSnapshot.context.bounds
+        Logger.debug("checkSelection() text.count=\(text.count) bounds=\(String(describing: bounds))")
+        currentSnapshot = effectiveSnapshot
         dotVisible = true
         dot.show(near: bounds)
     }
