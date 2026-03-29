@@ -1,5 +1,3 @@
-import Foundation
-
 public struct ChatMessage: Codable, Equatable, Sendable {
     public var role: String
     public var content: String

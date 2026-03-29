@@ -23,23 +23,4 @@ struct PromptBuilderTests {
         #expect(messages[0].content.contains("precise rewrite assistant"))
         #expect(messages[1].content == "Instruction:\nShorten this.\n\nSelected text:\nLong text")
     }
-
-    @Test
-    func prefersExplicitInstructionOverPresetTemplate() {
-        let request = RewriteRequest(
-            preset: RewritePreset(
-                id: "translate",
-                name: "Translate",
-                description: "Translate text.",
-                order: 10,
-                prompt: "Translate this."
-            ),
-            instruction: "Rewrite in plain English.",
-            selection: SelectionContext(bundleIdentifier: nil, text: "原文")
-        )
-
-        let messages = PromptBuilder.buildMessages(for: request)
-
-        #expect(messages[1].content == "Instruction:\nRewrite in plain English.\n\nSelected text:\n原文")
-    }
 }

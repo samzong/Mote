@@ -1,5 +1,4 @@
 import AppKit
-import Foundation
 
 public enum PasteReplaceStrategyError: LocalizedError {
     case targetNotFrontmost

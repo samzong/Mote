@@ -1,5 +1,4 @@
 import CoreGraphics
-import Foundation
 import MoteCore
 
 final class GlobalHotkeyMonitor: @unchecked Sendable {

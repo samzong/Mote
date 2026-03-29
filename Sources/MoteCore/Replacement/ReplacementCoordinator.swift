@@ -1,5 +1,4 @@
 import AppKit
-import Foundation
 
 typealias SelectionValidation = (AXSelectionSnapshot) -> AXSelectionSnapshot?
 typealias CurrentSelectionValidation = @MainActor (AXSelectionSnapshot) async -> AXSelectionSnapshot?

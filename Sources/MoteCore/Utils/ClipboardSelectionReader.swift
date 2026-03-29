@@ -1,6 +1,5 @@
 import AppKit
 import ApplicationServices
-import Foundation
 
 public final class ClipboardSelectionReader {
     public init() {}

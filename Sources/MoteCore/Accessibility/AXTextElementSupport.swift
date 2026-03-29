@@ -1,34 +1,14 @@
 import AppKit
 import ApplicationServices
-import Foundation
 
 public enum AXTextElementSupport {
     public static func stringAttribute(_ attribute: CFString, element: AXUIElement) -> String? {
-        var value: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(element, attribute, &value)
-        guard result == .success, let value else {
-            return nil
-        }
-
-        return value as? String
+        element.axAttribute(attribute)
     }
 
     public static func isWritable(element: AXUIElement) -> Bool {
-        var selectedTextSettable = DarwinBoolean(false)
-        if AXUIElementIsAttributeSettable(
-            element,
-            kAXSelectedTextAttribute as CFString,
-            &selectedTextSettable
-        ) == .success, selectedTextSettable.boolValue {
-            return true
-        }
-
-        var valueSettable = DarwinBoolean(false)
-        return AXUIElementIsAttributeSettable(
-            element,
-            kAXValueAttribute as CFString,
-            &valueSettable
-        ) == .success && valueSettable.boolValue
+        element.axIsSettable(kAXSelectedTextAttribute as CFString)
+            || element.axIsSettable(kAXValueAttribute as CFString)
     }
 
     public static func uniqueRange(of selectedText: String, in fieldText: String?) -> SelectionRange? {
@@ -60,16 +40,7 @@ public enum AXTextElementSupport {
     }
 
     public static func focusedElement(from systemWide: AXUIElement) -> AXUIElement? {
-        var value: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(
-            systemWide,
-            kAXFocusedUIElementAttribute as CFString,
-            &value
-        )
-        guard result == .success, let value, CFGetTypeID(value) == AXUIElementGetTypeID() else {
-            return nil
-        }
-        return (value as! AXUIElement)
+        systemWide.axElement(kAXFocusedUIElementAttribute as CFString)
     }
 
     public static func textMarkerRange(from proof: TextMarkerRangeProof) -> AXTextMarkerRange? {
@@ -96,22 +67,9 @@ public enum AXTextElementSupport {
     }
 
     public static func isSecure(element: AXUIElement) -> Bool {
-        if boolAttribute("AXValueProtected" as CFString, element: element) == true {
-            return true
-        }
-        if boolAttribute("AXProtectedContent" as CFString, element: element) == true {
-            return true
-        }
-        return false
-    }
-
-    static func boolAttribute(_ attribute: CFString, element: AXUIElement) -> Bool? {
-        var value: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(element, attribute, &value)
-        guard result == .success, let value else {
-            return nil
-        }
-        return value as? Bool
+        let protected: Bool? = element.axAttribute("AXValueProtected" as CFString)
+        let content: Bool? = element.axAttribute("AXProtectedContent" as CFString)
+        return protected == true || content == true
     }
 
     public static func isFrontmost(processIdentifier: Int32) -> Bool {

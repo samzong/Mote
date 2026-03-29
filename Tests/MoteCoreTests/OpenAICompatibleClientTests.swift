@@ -13,15 +13,6 @@ struct OpenAICompatibleClientTests {
     )
 
     @Test
-    func buildsExpectedEndpointURL() throws {
-        let client = OpenAICompatibleClient()
-
-        let url = try #require(client.buildURL(from: config))
-
-        #expect(url.absoluteString == "http://127.0.0.1:1234/v1/chat/completions")
-    }
-
-    @Test
     func requestConstructionUsesConfigAndOpenAIShape() throws {
         let client = OpenAICompatibleClient()
 

@@ -1,5 +1,3 @@
-import Foundation
-
 public struct RewriteResult: Equatable, Sendable {
     public var output: String
 

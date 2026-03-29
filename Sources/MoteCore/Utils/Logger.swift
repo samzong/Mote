@@ -1,4 +1,4 @@
-import Foundation
+import Darwin
 
 public enum Logger {
     public nonisolated(unsafe) static var debugEnabled = true

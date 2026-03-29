@@ -53,8 +53,4 @@ public struct SelectionContext: Equatable, Sendable {
     public var isValid: Bool {
         !text.isEmpty && range.length > 0 && !isSecure
     }
-
-    public var isPlaceable: Bool {
-        bounds != nil
-    }
 }
