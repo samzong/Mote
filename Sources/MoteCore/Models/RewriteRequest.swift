@@ -1,10 +1,8 @@
 public struct RewriteRequest: Equatable, Sendable {
-    public var preset: RewritePreset
     public var instruction: String
     public var selection: SelectionContext
 
-    public init(preset: RewritePreset, instruction: String, selection: SelectionContext) {
-        self.preset = preset
+    public init(instruction: String, selection: SelectionContext) {
         self.instruction = instruction
         self.selection = selection
     }

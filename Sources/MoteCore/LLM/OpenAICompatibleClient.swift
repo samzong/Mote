@@ -89,10 +89,10 @@ public final class OpenAICompatibleClient {
         return request
     }
 
-    public func rewrite(request: RewriteRequest, config: AppConfig) async throws -> RewriteResult {
+    public func rewrite(request: RewriteRequest, config: AppConfig) async throws -> String {
         let messages = PromptBuilder.buildMessages(for: request)
         let urlRequest = try makeRequest(config: config, messages: messages)
-        return try await RewriteResult(output: execute(request: urlRequest))
+        return try await execute(request: urlRequest)
     }
 
     private func execute(request: URLRequest) async throws -> String {

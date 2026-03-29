@@ -306,14 +306,13 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
             do {
                 let config = try ConfigLoader.loadConfig()
                 let request = RewriteRequest(
-                    preset: RewritePreset(prompt: instruction),
                     instruction: instruction,
                     selection: context
                 )
-                let result = try await OpenAICompatibleClient()
+                let output = try await OpenAICompatibleClient()
                     .rewrite(request: request, config: config)
                 guard !Task.isCancelled else { return }
-                self?.onResult(result.output)
+                self?.onResult(output)
             } catch {
                 guard !Task.isCancelled else { return }
                 self?.onResult("Error: \(error.localizedDescription)")
