@@ -1,6 +1,5 @@
 import AppKit
 import ApplicationServices
-import Foundation
 
 public final class AXSelectionReader {
     private let boundsResolver: AXBoundsResolver
@@ -35,10 +34,6 @@ public final class AXSelectionReader {
 
         Logger.debug("ax-read: no snapshot from any candidate")
         return nil
-    }
-
-    public func frontmostBundleIdentifier() -> String? {
-        NSWorkspace.shared.frontmostApplication?.bundleIdentifier
     }
 
     public func validatedSelection(for snapshot: AXSelectionSnapshot) -> AXSelectionSnapshot? {
@@ -98,7 +93,7 @@ public final class AXSelectionReader {
             effectiveRange = SelectionRange(location: 0, length: (text as NSString).length)
         }
 
-        let processIdentifier = processIdentifier(for: element) ?? processIdentifier(for: fallbackElement)
+        let processIdentifier = element.axPid() ?? fallbackElement.axPid()
         let bundleIdentifier = processIdentifier
             .flatMap { NSRunningApplication(processIdentifier: $0)?.bundleIdentifier }
 
@@ -129,10 +124,8 @@ public final class AXSelectionReader {
             text: text,
             range: effectiveRange,
             bounds: bounds,
-            isSecure: AXTextElementSupport.isSecure(element: element) || AXTextElementSupport
-                .isSecure(element: fallbackElement),
-            isWritable: AXTextElementSupport.isWritable(element: element) ||
-                AXTextElementSupport.isWritable(element: fallbackElement)
+            isSecure: sec || AXTextElementSupport.isSecure(element: fallbackElement),
+            isWritable: wrt || AXTextElementSupport.isWritable(element: fallbackElement)
         )
 
         guard context.isValid else {
@@ -170,11 +163,11 @@ public final class AXSelectionReader {
 
         append(focusedElement)
 
-        var currentParent = parent(of: focusedElement)
+        var currentParent = focusedElement.axElement(kAXParentAttribute as CFString)
         var ancestorDepth = 0
         while ancestorDepth < 4 {
             append(currentParent)
-            currentParent = currentParent.flatMap(parent(of:))
+            currentParent = currentParent?.axElement(kAXParentAttribute as CFString)
             ancestorDepth += 1
         }
 
@@ -192,53 +185,14 @@ public final class AXSelectionReader {
             return []
         }
 
-        let children = children(of: element)
+        let children = element.axElements(kAXChildrenAttribute as CFString)
         return children + children.flatMap { descendants(of: $0, maxDepth: maxDepth - 1) }
     }
 
-    private func children(of element: AXUIElement) -> [AXUIElement] {
-        var value: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &value)
-        guard result == .success, let value, let array = value as? [Any] else {
-            return []
-        }
-
-        return array.compactMap { item in
-            guard CFGetTypeID(item as CFTypeRef) == AXUIElementGetTypeID() else {
-                return nil
-            }
-
-            return (item as! AXUIElement)
-        }
-    }
-
-    private func parent(of element: AXUIElement) -> AXUIElement? {
-        var value: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(element, kAXParentAttribute as CFString, &value)
-        guard result == .success, let value, CFGetTypeID(value) == AXUIElementGetTypeID() else {
-            return nil
-        }
-
-        return (value as! AXUIElement)
-    }
-
     private func selectedRange(for element: AXUIElement) -> SelectionRange? {
-        var value: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &value)
-        guard result == .success, let axValue = value, CFGetTypeID(axValue) == AXValueGetTypeID() else {
+        guard let range = element.axCFRange(kAXSelectedTextRangeAttribute as CFString) else {
             return nil
         }
-
-        let castValue = axValue as! AXValue
-        guard AXValueGetType(castValue) == .cfRange else {
-            return nil
-        }
-
-        var range = CFRange()
-        guard AXValueGetValue(castValue, .cfRange, &range) else {
-            return nil
-        }
-
         return SelectionRange(location: range.location, length: range.length)
     }
 
@@ -303,20 +257,10 @@ public final class AXSelectionReader {
         guard let rangeValue = AXValueCreate(.cfRange, &cfRange) else {
             return nil
         }
-
-        var value: CFTypeRef?
-        let result = AXUIElementCopyParameterizedAttributeValue(
-            element,
+        return element.axParameterized(
             kAXStringForRangeParameterizedAttribute as CFString,
-            rangeValue,
-            &value
+            param: rangeValue
         )
-
-        guard result == .success, let value else {
-            return nil
-        }
-
-        return value as? String
     }
 
     private func stringForTextMarkerRange(
@@ -326,29 +270,10 @@ public final class AXSelectionReader {
         guard let textMarkerRange = AXTextElementSupport.textMarkerRange(from: proof) else {
             return nil
         }
-
-        var value: CFTypeRef?
-        let result = AXUIElementCopyParameterizedAttributeValue(
-            element,
+        return element.axParameterized(
             "AXStringForTextMarkerRange" as CFString,
-            textMarkerRange,
-            &value
+            param: textMarkerRange
         )
-
-        guard result == .success, let value else {
-            return nil
-        }
-
-        return value as? String
-    }
-
-    private func processIdentifier(for element: AXUIElement) -> pid_t? {
-        var pid: pid_t = 0
-        guard AXUIElementGetPid(element, &pid) == .success else {
-            return nil
-        }
-
-        return pid
     }
 
     private func opaquePointer(for element: AXUIElement) -> OpaquePointer {

@@ -1,5 +1,4 @@
 import ApplicationServices
-import Foundation
 
 public final class AXSelectionRestorer {
     public init() {}
@@ -16,43 +15,21 @@ public final class AXSelectionRestorer {
     }
 
     private func restoreExactRange(_ range: SelectionRange, in element: AXUIElement) -> Bool {
-        var settable = DarwinBoolean(false)
-        guard AXUIElementIsAttributeSettable(
-            element,
-            kAXSelectedTextRangeAttribute as CFString,
-            &settable
-        ) == .success, settable.boolValue else {
+        guard element.axIsSettable(kAXSelectedTextRangeAttribute as CFString) else {
             return false
         }
-
-        var cfRange = CFRange(location: range.location, length: range.length)
-        guard let value = AXValueCreate(.cfRange, &cfRange) else {
-            return false
-        }
-
-        return AXUIElementSetAttributeValue(
-            element,
+        return element.axSetRange(
             kAXSelectedTextRangeAttribute as CFString,
-            value
-        ) == .success
+            range: CFRange(location: range.location, length: range.length)
+        )
     }
 
     private func restoreTextMarkerRange(_ proof: TextMarkerRangeProof, in element: AXUIElement) -> Bool {
-        var settable = DarwinBoolean(false)
-        guard AXUIElementIsAttributeSettable(
-            element,
-            "AXSelectedTextMarkerRange" as CFString,
-            &settable
-        ) == .success, settable.boolValue,
-            let textMarkerRange = AXTextElementSupport.textMarkerRange(from: proof)
+        guard element.axIsSettable("AXSelectedTextMarkerRange" as CFString),
+              let textMarkerRange = AXTextElementSupport.textMarkerRange(from: proof)
         else {
             return false
         }
-
-        return AXUIElementSetAttributeValue(
-            element,
-            "AXSelectedTextMarkerRange" as CFString,
-            textMarkerRange
-        ) == .success
+        return element.axSet("AXSelectedTextMarkerRange" as CFString, value: textMarkerRange)
     }
 }

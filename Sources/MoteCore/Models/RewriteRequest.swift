@@ -1,5 +1,3 @@
-import Foundation
-
 public struct RewriteRequest: Equatable, Sendable {
     public var preset: RewritePreset
     public var instruction: String

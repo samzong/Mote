@@ -1,5 +1,3 @@
-import Foundation
-
 public struct ChatCompletionResponse: Codable, Equatable, Sendable {
     public struct Choice: Codable, Equatable, Sendable {
         public struct Message: Codable, Equatable, Sendable {

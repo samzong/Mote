@@ -33,16 +33,6 @@ public enum OpenAICompatibleClientError: LocalizedError {
     }
 }
 
-public struct EndpointReachability: Equatable, Sendable {
-    public let reachable: Bool
-    public let statusCode: Int?
-
-    public init(reachable: Bool, statusCode: Int?) {
-        self.reachable = reachable
-        self.statusCode = statusCode
-    }
-}
-
 public final class OpenAICompatibleClient {
     private let session: URLSession
 
@@ -97,54 +87,6 @@ public final class OpenAICompatibleClient {
 
         request.httpBody = try encoder.encode(payload)
         return request
-    }
-
-    public func checkReachability(config: AppConfig) async -> EndpointReachability {
-        guard let url = buildURL(from: config), !config.baseURL.isEmpty else {
-            return EndpointReachability(reachable: false, statusCode: nil)
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "OPTIONS"
-        request.timeoutInterval = 20
-
-        do {
-            let (data, response) = try await session.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse else {
-                return EndpointReachability(reachable: false, statusCode: nil)
-            }
-
-            if apiErrorMessage(from: data) != nil {
-                return EndpointReachability(reachable: false, statusCode: httpResponse.statusCode)
-            }
-
-            return EndpointReachability(
-                reachable: (200 ..< 500).contains(httpResponse.statusCode),
-                statusCode: httpResponse.statusCode
-            )
-        } catch {
-            return EndpointReachability(reachable: false, statusCode: nil)
-        }
-    }
-
-    public func probe(config: AppConfig) async throws -> String {
-        let messages = [
-            ChatMessage(role: "system", content: "You are a connectivity test."),
-            ChatMessage(role: "user", content: "Reply with OK."),
-        ]
-        let request = try makeRequest(
-            config: AppConfig(
-                baseURL: config.baseURL,
-                apiKey: config.apiKey,
-                model: config.model,
-                temperature: 0,
-                maxTokens: min(config.maxTokens, 32),
-                hotkey: config.hotkey
-            ),
-            messages: messages
-        )
-
-        return try await execute(request: request)
     }
 
     public func rewrite(request: RewriteRequest, config: AppConfig) async throws -> RewriteResult {

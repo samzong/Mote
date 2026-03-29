@@ -23,7 +23,7 @@ public final class AXReplacementWriter {
         context: SelectionContext,
         with replacement: String
     ) throws {
-        if replaceViaSelectedTextAttribute(in: element, with: replacement) {
+        if element.axSet(kAXSelectedTextAttribute as CFString, value: replacement as CFTypeRef) {
             return
         }
 
@@ -32,24 +32,12 @@ public final class AXReplacementWriter {
         }
     }
 
-    private func replaceViaSelectedTextAttribute(in element: AXUIElement, with replacement: String) -> Bool {
-        let result = AXUIElementSetAttributeValue(
-            element,
-            kAXSelectedTextAttribute as CFString,
-            replacement as CFTypeRef
-        )
-
-        return result == .success
-    }
-
     private func replaceViaValueAttribute(
         in element: AXUIElement,
         context: SelectionContext,
         with replacement: String
     ) -> Bool {
-        var value: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &value)
-        guard result == .success, let currentValue = value as? String else {
+        guard let currentValue: String = element.axAttribute(kAXValueAttribute as CFString) else {
             return false
         }
 
@@ -60,20 +48,13 @@ public final class AXReplacementWriter {
         }
 
         let updated = currentNSString.replacingCharacters(in: range, with: replacement)
-        guard AXUIElementSetAttributeValue(element, kAXValueAttribute as CFString, updated as CFTypeRef) == .success
-        else {
+        guard element.axSet(kAXValueAttribute as CFString, value: updated as CFTypeRef) else {
             return false
         }
 
-        var cursorRange = CFRange(location: range.location + (replacement as NSString).length, length: 0)
-        guard let cursorValue = AXValueCreate(.cfRange, &cursorRange) else {
-            return true
-        }
-
-        _ = AXUIElementSetAttributeValue(
-            element,
+        element.axSetRange(
             kAXSelectedTextRangeAttribute as CFString,
-            cursorValue
+            range: CFRange(location: range.location + (replacement as NSString).length, length: 0)
         )
         return true
     }

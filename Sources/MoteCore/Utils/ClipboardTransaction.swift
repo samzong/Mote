@@ -1,5 +1,4 @@
 import AppKit
-import Foundation
 
 public final class ClipboardTransaction {
     private struct ItemSnapshot {

@@ -1,5 +1,4 @@
 import ApplicationServices
-import Foundation
 
 public final class AXSelectionSnapshot {
     public let element: AXUIElement
