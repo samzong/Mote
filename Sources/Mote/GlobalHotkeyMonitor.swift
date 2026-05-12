@@ -18,8 +18,12 @@ final class GlobalHotkeyMonitor: @unchecked Sendable {
         self.onManageTrigger = onManageTrigger
     }
 
-    func start() {
+    func start() -> Bool {
         Logger.debug("GlobalHotkeyMonitor.start()")
+        if eventTap != nil {
+            return true
+        }
+
         let mask: CGEventMask =
             (1 << CGEventType.flagsChanged.rawValue) |
             (1 << CGEventType.keyDown.rawValue)
@@ -40,7 +44,7 @@ final class GlobalHotkeyMonitor: @unchecked Sendable {
             userInfo: userInfo
         ) else {
             Logger.debug("GlobalHotkeyMonitor: CGEvent.tapCreate FAILED")
-            return
+            return false
         }
 
         Logger.debug("GlobalHotkeyMonitor: event tap created OK")
@@ -48,6 +52,7 @@ final class GlobalHotkeyMonitor: @unchecked Sendable {
         let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         runLoopSource = source
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        return true
     }
 
     func stop() {

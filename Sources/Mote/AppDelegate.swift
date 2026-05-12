@@ -7,6 +7,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotkeyMonitor: GlobalHotkeyMonitor?
     private var composerPanel: ComposerPanel?
     private var selectionWatcher: SelectionWatcher?
+    private var statusMenu: StatusMenuController?
+    private var hotkeyAvailable = false
     private let clipboardReader = ClipboardSelectionReader()
 
     func applicationDidFinishLaunching(_: Notification) {
@@ -14,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         try? ConfigLoader.saveDefaultFilesIfNeeded()
         setupLoginItem()
+        setUpStatusMenu()
 
         composerPanel = ComposerPanel()
         composerPanel?.onDismiss = { [weak self] in
@@ -43,7 +46,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
         )
-        hotkeyMonitor?.start()
+        startHotkeyMonitorIfNeeded()
+        refreshStatusMenu()
         Logger.debug("AppDelegate init complete")
     }
 
@@ -67,6 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Logger.debug("handleHotkey() accessibilityTrusted=\(trusted)")
         if !trusted {
             AccessibilityPermission.requestAccess()
+            refreshStatusMenu()
             return
         }
 
@@ -93,6 +98,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         selectionWatcher?.hideDot()
         selectionWatcher?.isEnabled = false
         composerPanel?.show(for: snapshot, showQuit: showQuit)
+    }
+
+    private func setUpStatusMenu() {
+        let menu = StatusMenuController()
+        menu.onRefreshStatus = { [weak self] in
+            guard let self else {
+                return StatusMenuController.Status(
+                    accessibilityTrusted: AccessibilityPermission.isTrusted(),
+                    hotkeyAvailable: false
+                )
+            }
+            return self.currentStatus()
+        }
+        menu.onRequestAccessibility = { [weak self] in
+            AccessibilityPermission.requestAccess()
+            self?.refreshStatusMenu()
+        }
+        statusMenu = menu
+        refreshStatusMenu()
+    }
+
+    private func currentStatus() -> StatusMenuController.Status {
+        let trusted = AccessibilityPermission.isTrusted()
+        if trusted, !hotkeyAvailable {
+            startHotkeyMonitorIfNeeded()
+        }
+        return StatusMenuController.Status(
+            accessibilityTrusted: trusted,
+            hotkeyAvailable: hotkeyAvailable
+        )
+    }
+
+    private func refreshStatusMenu() {
+        statusMenu?.update(with: currentStatus())
+    }
+
+    @discardableResult
+    private func startHotkeyMonitorIfNeeded() -> Bool {
+        guard let hotkeyMonitor else {
+            hotkeyAvailable = false
+            return false
+        }
+        hotkeyAvailable = hotkeyMonitor.start()
+        return hotkeyAvailable
     }
 
     private func setupLoginItem() {
