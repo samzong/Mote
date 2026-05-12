@@ -298,9 +298,18 @@ final class ComposerPanel: NSObject, NSTextFieldDelegate {
             text: selectionText,
             range: SelectionRange(location: 0, length: (selectionText as NSString).length),
             bounds: snapshot.context.bounds,
-            isSecure: false,
-            isWritable: true
+            isSecure: snapshot.context.isSecure,
+            isWritable: snapshot.context.isWritable
         )
+        guard context.isValid else {
+            spinner.isHidden = true
+            spinner.stopAnimation(nil)
+            instructionField.isEnabled = true
+            sendButton.isHidden = instruction.isEmpty
+            layoutInputBar()
+            Logger.info("rewrite blocked for invalid selection")
+            return
+        }
 
         rewriteTask = Task { [weak self] in
             do {

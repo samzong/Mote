@@ -56,8 +56,7 @@ public final class PasteReplaceStrategy {
         }
 
         let nsFieldText = fieldText as NSString
-        let nsRange = NSRange(location: range.location, length: range.length)
-        guard NSMaxRange(nsRange) <= nsFieldText.length else {
+        guard let nsRange = range.nsRange(in: nsFieldText) else {
             return false
         }
 

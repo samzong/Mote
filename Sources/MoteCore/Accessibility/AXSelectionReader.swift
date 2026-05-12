@@ -193,7 +193,8 @@ public final class AXSelectionReader {
         guard let range = element.axCFRange(kAXSelectedTextRangeAttribute as CFString) else {
             return nil
         }
-        return SelectionRange(location: range.location, length: range.length)
+        let selectionRange = SelectionRange(location: range.location, length: range.length)
+        return selectionRange.isValid ? selectionRange : nil
     }
 
     private func selectedTextMarkerRange(for element: AXUIElement) -> TextMarkerRangeProof? {
@@ -230,8 +231,7 @@ public final class AXSelectionReader {
         }
 
         let nsValue = value as NSString
-        let selectedRange = NSRange(location: range.location, length: range.length)
-        guard NSMaxRange(selectedRange) <= nsValue.length else {
+        guard let selectedRange = range.nsRange(in: nsValue) else {
             return nil
         }
 

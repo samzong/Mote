@@ -97,6 +97,11 @@ public final class ClipboardSelectionReader {
             isWritable: isWritable
         )
 
+        guard context.isValid else {
+            Logger.debug("clipboard-read: invalid or secure selection")
+            return nil
+        }
+
         if !restored {
             Logger.debug("clipboard-read: skipped clipboard restore because contents changed")
         }

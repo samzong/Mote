@@ -8,6 +8,22 @@ public struct SelectionRange: Equatable, Sendable {
         self.location = location
         self.length = length
     }
+
+    public var isValid: Bool {
+        location >= 0 && length >= 0 && location <= Int.max - length
+    }
+
+    public func nsRange(in text: NSString) -> NSRange? {
+        guard isValid else {
+            return nil
+        }
+
+        let range = NSRange(location: location, length: length)
+        guard NSMaxRange(range) <= text.length else {
+            return nil
+        }
+        return range
+    }
 }
 
 public struct SelectionContext: Equatable, Sendable {
@@ -50,6 +66,6 @@ public struct SelectionContext: Equatable, Sendable {
     }
 
     public var isValid: Bool {
-        !text.isEmpty && range.length > 0 && !isSecure
+        !text.isEmpty && range.length > 0 && range.isValid && !isSecure
     }
 }

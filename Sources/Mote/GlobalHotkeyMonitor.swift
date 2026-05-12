@@ -36,10 +36,10 @@ final class GlobalHotkeyMonitor: @unchecked Sendable {
             options: .listenOnly,
             eventsOfInterest: mask,
             callback: { _, type, event, userInfo -> Unmanaged<CGEvent>? in
-                guard let userInfo else { return Unmanaged.passRetained(event) }
+                guard let userInfo else { return Unmanaged.passUnretained(event) }
                 let monitor = Unmanaged<GlobalHotkeyMonitor>.fromOpaque(userInfo).takeUnretainedValue()
                 monitor.handleEvent(type: type, event: event)
-                return Unmanaged.passRetained(event)
+                return Unmanaged.passUnretained(event)
             },
             userInfo: userInfo
         ) else {

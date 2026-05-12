@@ -42,8 +42,7 @@ public final class AXReplacementWriter {
         }
 
         let currentNSString = currentValue as NSString
-        let range = NSRange(location: context.range.location, length: context.range.length)
-        guard NSMaxRange(range) <= currentNSString.length else {
+        guard let range = context.range.nsRange(in: currentNSString) else {
             return false
         }
 
