@@ -7,6 +7,7 @@ APP_NAME   := Mote
 BUNDLE_ID  := com.samzong.mote
 BUILD_DIR  := .build
 APP_BUNDLE := /Applications/$(APP_NAME).app
+APP_ICON   := Resources/AppIcon.icns
 ARCH       ?= arm64
 
 DMG_DIR     := $(BUILD_DIR)/dmg
@@ -63,8 +64,10 @@ dmg: ## Build an ad-hoc signed DMG
 	$(SWIFT) build -c release --arch $(ARCH) --product $(APP_NAME)
 	rm -rf $(DMG_STAGING)
 	mkdir -p $(DMG_STAGING)/$(APP_NAME).app/Contents/MacOS
+	mkdir -p $(DMG_STAGING)/$(APP_NAME).app/Contents/Resources
 	cp $$($(SWIFT) build -c release --arch $(ARCH) --product $(APP_NAME) --show-bin-path)/$(APP_NAME) $(DMG_STAGING)/$(APP_NAME).app/Contents/MacOS/$(APP_NAME)
 	cp Resources/Info.plist $(DMG_STAGING)/$(APP_NAME).app/Contents/Info.plist
+	cp $(APP_ICON) $(DMG_STAGING)/$(APP_NAME).app/Contents/Resources/AppIcon.icns
 	$(CODE_SIGN) $(DMG_STAGING)/$(APP_NAME).app
 	ln -s /Applications $(DMG_STAGING)/Applications
 	rm -f $(DMG_PATH)
@@ -78,8 +81,10 @@ dmg: ## Build an ad-hoc signed DMG
 install: ## Install an ad-hoc signed app bundle to /Applications
 	$(SWIFT) build -c release --arch $(ARCH) --product $(APP_NAME)
 	mkdir -p $(APP_BUNDLE)/Contents/MacOS
+	mkdir -p $(APP_BUNDLE)/Contents/Resources
 	cp $$($(SWIFT) build -c release --arch $(ARCH) --product $(APP_NAME) --show-bin-path)/$(APP_NAME) $(APP_BUNDLE)/Contents/MacOS/$(APP_NAME)
 	cp Resources/Info.plist $(APP_BUNDLE)/Contents/Info.plist
+	cp $(APP_ICON) $(APP_BUNDLE)/Contents/Resources/AppIcon.icns
 	$(CODE_SIGN) $(APP_BUNDLE)
 	@printf "Installed to %s\n" "$(APP_BUNDLE)"
 

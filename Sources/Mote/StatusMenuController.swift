@@ -26,20 +26,10 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
                     "Mote: Hotkey Monitor Unavailable"
             }
         }
-
-        var symbolName: String {
-            switch self {
-                case .ready:
-                    "wand.and.sparkles"
-                case .accessibilityRequired:
-                    "exclamationmark.triangle"
-                case .hotkeyUnavailable:
-                    "keyboard.badge.exclamationmark"
-            }
-        }
     }
 
-    private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+    private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+    private let statusImage = StatusMenuController.makeMenuBarImage()
     private let menu = NSMenu()
     private let statusMenuItem = NSMenuItem()
     private let requestAccessibilityItem = NSMenuItem()
@@ -67,18 +57,10 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         requestAccessibilityItem.isHidden = status.accessibilityTrusted
 
         guard let button = statusItem.button else { return }
-        if let image = NSImage(
-            systemSymbolName: displayState.symbolName,
-            accessibilityDescription: displayState.title
-        ) {
-            image.isTemplate = true
-            button.image = image
-            button.title = ""
-            button.imagePosition = .imageOnly
-        } else {
-            button.image = nil
-            button.title = "Mote"
-        }
+        button.image = statusImage
+        button.title = ""
+        button.imagePosition = .imageOnly
+        button.imageScaling = .scaleProportionallyDown
         button.toolTip = displayState.title
         button.setAccessibilityLabel(displayState.title)
     }
@@ -119,6 +101,16 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         menu.addItem(quitItem)
 
         statusItem.menu = menu
+    }
+
+    private static func makeMenuBarImage() -> NSImage {
+        let image = NSImage(systemSymbolName: "note.text", accessibilityDescription: "Mote")?
+            .withSymbolConfiguration(.init(pointSize: 17, weight: .medium)) ?? NSImage(
+                systemSymbolName: "doc.text",
+                accessibilityDescription: "Mote"
+            ) ?? NSImage(size: NSSize(width: 17, height: 17))
+        image.isTemplate = true
+        return image
     }
 
     @objc private func requestAccessibility() {
