@@ -47,7 +47,7 @@ dmg:
 	swift build -c release --arch arm64 --product $(APP_NAME)
 	rm -rf $(DMG_STAGING)
 	mkdir -p $(DMG_STAGING)/$(APP_NAME).app/Contents/MacOS
-	cp $(BUILD_DIR)/release/$(APP_NAME) $(DMG_STAGING)/$(APP_NAME).app/Contents/MacOS/$(APP_NAME)
+	cp $$(swift build -c release --arch arm64 --product $(APP_NAME) --show-bin-path)/$(APP_NAME) $(DMG_STAGING)/$(APP_NAME).app/Contents/MacOS/$(APP_NAME)
 	cp Resources/Info.plist $(DMG_STAGING)/$(APP_NAME).app/Contents/Info.plist
 	codesign --force --sign - $(DMG_STAGING)/$(APP_NAME).app
 	ln -s /Applications $(DMG_STAGING)/Applications
