@@ -1,0 +1,40 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Extract version
+        id: v
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build DMG
+        run: make dmg
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: .build/*-arm64.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Homebrew Tap
+        uses: samzong/homebrew-tap/actions/brew-releaser@main
+        with:
+          type: cask
+          version: ${{ steps.v.outputs.version }}
+          app_name: Mote
+          dmg_url: "https://github.com/${{ github.repository }}/releases/download/v${{ steps.v.outputs.version }}/Mote-arm64.dmg"
+          desc: "macOS background app that rewrites selected text system-wide"
+          min_macos: ":sequoia"
+          token: ${{ secrets.GH_PAT }}
